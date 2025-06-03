@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "705059456987",
+    "project_id": "belajarbareng-b23c8",
+    "storage_bucket": "belajarbareng-b23c8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:705059456987:android:224efe6750ec04759089fe",
+        "android_client_info": {
+          "package_name": "com.example.myapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "705059456987-m8o4cf1g7ne2a2bqkmtnf32qvvnrbv61.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.myapp",
+            "certificate_hash": "5eaa4d68e494a272c38db21fb1e77eb2cf1e1198"
+          }
+        },
+        {
+          "client_id": "705059456987-k0kvujmjp12frjtns0mk003f87rut2l0.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDivwXOWRGhWNzDYAZwN6RaHMHMvHc7G6I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "705059456987-k0kvujmjp12frjtns0mk003f87rut2l0.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
