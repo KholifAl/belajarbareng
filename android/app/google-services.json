@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "705059456987",
+    "project_id": "belajarbareng-b23c8",
+    "storage_bucket": "belajarbareng-b23c8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:705059456987:android:224efe6750ec04759089fe",
+        "android_client_info": {
+          "package_name": "com.example.myapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDivwXOWRGhWNzDYAZwN6RaHMHMvHc7G6I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
