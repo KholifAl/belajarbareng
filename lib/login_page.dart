@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'register_page.dart';
 
 class LoginPage extends StatefulWidget {
@@ -52,6 +53,7 @@ class _LoginPageState extends State<LoginPage> {
       print('Google Sign-In error: ${e.message}');
     }
   }
+
 
   @override
   Widget build(BuildContext context) {

@@ -50,20 +50,24 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyAyAL0Qu3sLkByg60KWiEPlnj8nXDC7ULw',
-    appId: '1:705059456987:web:db29058800e324e09089fe',
-    messagingSenderId: '705059456987',
-    projectId: 'belajarbareng-b23c8',
-    authDomain: 'belajarbareng-b23c8.firebaseapp.com',
-    storageBucket: 'belajarbareng-b23c8.firebasestorage.app',
-    measurementId: 'G-JZ9KWLM4QP',
+    apiKey: 'AIzaSyAOtLZ5F57lUN1RsGY05SWPoTWbVCoP0ww',
+    appId: '1:610083134108:web:318331816b2eb35d192b59',
+    messagingSenderId: '610083134108',
+    projectId: 'belajarbersama-54559',
+    authDomain: 'belajarbersama-54559.firebaseapp.com',
+    databaseURL:
+        'https://belajarbersama-54559-default-rtdb.asia-southeast1.firebasedatabase.app',
+    storageBucket: 'belajarbersama-54559.appspot.com',
+    measurementId: 'G-CQ33E3WQQC',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyDivwXOWRGhWNzDYAZwN6RaHMHMvHc7G6I',
-    appId: '1:705059456987:android:224efe6750ec04759089fe',
-    messagingSenderId: '705059456987',
-    projectId: 'belajarbareng-b23c8',
-    storageBucket: 'belajarbareng-b23c8.firebasestorage.app',
+    apiKey: 'AIzaSyCmXxV6Z6pz5HRJn6uesAafz7Afg9rR9V8',
+    appId: '1:610083134108:android:1bc4f1b95ffdb356192b59',
+    messagingSenderId: '610083134108',
+    projectId: 'belajarbersama-54559',
+    databaseURL:
+        'https://belajarbersama-54559-default-rtdb.asia-southeast1.firebasedatabase.app',
+    storageBucket: 'belajarbersama-54559.appspot.com',
   );
 }
