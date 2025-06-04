@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_database/firebase_database.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -11,6 +13,7 @@ class RegisterPage extends StatefulWidget {
 class _RegisterPageState extends State<RegisterPage> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
+  final TextEditingController namaController = TextEditingController();
   String? errorMessage;
 
   Future<void> register() async {
@@ -19,6 +22,26 @@ class _RegisterPageState extends State<RegisterPage> {
         email: emailController.text.trim(),
         password: passwordController.text.trim(),
       );
+
+      // Setelah register berhasil:
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        // Simpan ke Realtime Database (sudah ada)
+        await FirebaseDatabase.instance.ref('users/${user.uid}').set({
+          'name': namaController.text.trim(),
+          'email': user.email,
+          'created_at': DateTime.now().toIso8601String(),
+          'photoUrl': null, // tambahkan baris ini
+        });
+
+        // Simpan ke Firestore
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+          'nama': namaController.text.trim(),
+          'uid': user.uid,
+          'created': FieldValue.serverTimestamp(),
+        });
+      }
+
       Navigator.of(context).pop(); // Kembali ke login setelah register
     } on FirebaseAuthException catch (e) {
       setState(() {
@@ -46,6 +69,10 @@ class _RegisterPageState extends State<RegisterPage> {
               controller: passwordController,
               decoration: const InputDecoration(labelText: 'Password'),
               obscureText: true,
+            ),
+            TextField(
+              controller: namaController,
+              decoration: const InputDecoration(labelText: 'Nama'),
             ),
             const SizedBox(height: 16),
             ElevatedButton(onPressed: register, child: const Text('Register')),

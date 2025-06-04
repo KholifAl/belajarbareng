@@ -8,6 +8,9 @@ import 'quiz_page.dart';
 import 'materi_page.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'chat_page.dart';
+import 'dart:async';
+import 'package:belajarbersama/utils.dart';
 
 class MainPage extends StatelessWidget {
   const MainPage({super.key});
@@ -37,12 +40,43 @@ class HomeLayout extends StatefulWidget {
 
 class _HomeLayoutState extends State<HomeLayout> {
   List<Map<String, dynamic>> nearbyUsers = [];
+  Timer? _timer;
+  Timer? _locationTimer;
+  Map? userData;
 
   @override
   void initState() {
     super.initState();
-    _updateLocationOnce();
-    fetchNearbyUsers();
+    _loadUserData().then((_) {
+      _updateLocationOnce();
+      fetchNearbyUsers();
+      _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
+        fetchNearbyUsers();
+      });
+      // Timer untuk update lokasi setiap 30 detik
+      _locationTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+        _updateLocationOnce();
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _locationTimer?.cancel();
+    _removeUserLocation();
+    super.dispose();
+  }
+
+  Future<void> _removeUserLocation() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      await FirebaseDatabase.instance.ref('users/${user.uid}').update({
+        'lat': null,
+        'lng': null,
+        'last_update': null,
+      });
+    }
   }
 
   Future<void> _updateLocationOnce() async {
@@ -51,10 +85,9 @@ class _HomeLayoutState extends State<HomeLayout> {
       try {
         await saveUserLocation(
           user.uid,
-          user.displayName ?? user.email ?? 'User',
+          userData?['name'] ?? 'User',
         );
       } catch (e) {
-        // Lokasi gagal, tapi biarkan user tetap login
         debugPrint('Gagal update lokasi: $e');
       }
     }
@@ -65,10 +98,22 @@ class _HomeLayoutState extends State<HomeLayout> {
     if (user == null) return;
     Position pos = await Geolocator.getCurrentPosition();
     final snapshot = await FirebaseDatabase.instance.ref('users').get();
+    final unreadSnapshot = await FirebaseDatabase.instance
+        .ref('users/${user.uid}/unread_chats')
+        .get();
+
     List<Map<String, dynamic>> result = [];
     for (final child in snapshot.children) {
-      if (child.key == user.uid) continue; // skip diri sendiri
+      if (child.key == user.uid) continue;
       final data = child.value as Map;
+
+      // --- Deklarasi di sini! ---
+      bool hasChatted = false;
+
+      // Filter hanya user online (last_update < 1 menit)
+      final lastUpdate = DateTime.tryParse(data['last_update'] ?? '') ?? DateTime(2000);
+      if (DateTime.now().difference(lastUpdate).inMinutes > 1 && !hasChatted) continue;
+
       double lat = data['lat'];
       double lng = data['lng'];
       double distance = calculateDistance(
@@ -77,16 +122,38 @@ class _HomeLayoutState extends State<HomeLayout> {
         lat,
         lng,
       );
-      if (distance <= 2.0) {
-        result.add({'name': data['name'], 'distance': distance});
+      bool hasNewChat = false;
+      final chatId = _generateChatId(user.uid, child.key!);
+
+      if (unreadSnapshot.exists && child.key != null) {
+        final unreadData = Map<String, dynamic>.from(unreadSnapshot.value as Map);
+        hasNewChat = unreadData[chatId] == true;
       }
+
+      // Cek apakah sudah pernah chat
+      final chatSnapshot = await FirebaseDatabase.instance.ref('chats/$chatId').get();
+      if (chatSnapshot.exists) {
+        // Cek apakah chat masih aktif (kurang dari 3 jam)
+        final lastActivity = DateTime.tryParse(chatSnapshot.child('last_activity').value as String? ?? '') ?? DateTime(2000);
+        if (DateTime.now().difference(lastActivity).inHours < 3) {
+          hasChatted = true;
+        }
+      }
+
+      result.add({
+        'name': data['name'],
+        'distance': distance,
+        'uid': child.key,
+        'hasNewChat': hasNewChat,
+        'hasChatted': hasChatted,
+        'photoUrl': data['photoUrl'] ?? '', // tambahkan ini
+      });
     }
     setState(() {
       nearbyUsers = result;
     });
   }
 
-  // Haversine formula
   double calculateDistance(lat1, lon1, lat2, lon2) {
     const R = 6371; // km
     double dLat = _deg2rad(lat2 - lat1);
@@ -97,16 +164,54 @@ class _HomeLayoutState extends State<HomeLayout> {
             cos(_deg2rad(lat2)) *
             sin(dLon / 2) *
             sin(dLon / 2);
-    double c = 2 * atan2(sqrt(a), sqrt(1 - a));
-    return R * c;
+    double distanceFactor = 2 * atan2(sqrt(a), sqrt(1 - a));
+    return R * distanceFactor;
   }
 
   double _deg2rad(double deg) => deg * pi / 180;
 
+  Future<void> saveUserLocation(String uid, String name) async {
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        return;
+      }
+    }
+    Position pos = await Geolocator.getCurrentPosition();
+    await FirebaseDatabase.instance.ref('users/$uid').update({
+      'name': name,
+      'lat': pos.latitude,
+      'lng': pos.longitude,
+      'last_update': DateTime.now().toIso8601String(),
+    });
+  }
+
+  String _generateChatId(String uid1, String uid2) {
+    final sorted = [uid1, uid2]..sort();
+    return '${sorted[0]}_${sorted[1]}';
+  }
+
+  Future<void> _loadUserData() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final snapshot = await FirebaseDatabase.instance
+          .ref('users/${user.uid}')
+          .get();
+      if (snapshot.exists) {
+        setState(() {
+          userData = snapshot.value as Map;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final displayName = userData?['name'] ?? 'User';
     final user = FirebaseAuth.instance.currentUser;
-    final displayName = user?.displayName ?? 'User';
     final photoUrl = user?.photoURL;
 
     return Scaffold(
@@ -133,10 +238,10 @@ class _HomeLayoutState extends State<HomeLayout> {
               },
               child: CircleAvatar(
                 radius: 22,
-                backgroundImage: photoUrl != null
-                    ? NetworkImage(photoUrl)
+                backgroundImage: (userData?['photoUrl'] != null && userData?['photoUrl'] != '')
+                    ? NetworkImage(transformCloudinaryUrl(userData!['photoUrl']))
                     : null,
-                child: photoUrl == null
+                child: (userData?['photoUrl'] == null || userData?['photoUrl'] == '')
                     ? const Icon(Icons.person, size: 22)
                     : null,
               ),
@@ -271,8 +376,6 @@ class _HomeLayoutState extends State<HomeLayout> {
               ],
             ),
             const SizedBox(height: 24),
-
-            // Nearby section
             const Text(
               'nearby',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
@@ -280,37 +383,87 @@ class _HomeLayoutState extends State<HomeLayout> {
             const SizedBox(height: 12),
             if (nearbyUsers.isEmpty) const Text('Tidak ada user di sekitar.'),
             ...nearbyUsers.map(
-              (user) => Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.pink[100],
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Row(
-                  children: [
-                    const CircleAvatar(
-                      radius: 22,
-                      child: Icon(Icons.person, size: 28),
+              (user) => GestureDetector(
+                onTap: () {
+                  final currentUser = FirebaseAuth.instance.currentUser!;
+                  final otherUserUid = user['uid'];
+                  final chatId = _generateChatId(currentUser.uid, otherUserUid);
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          ChatPage(chatId: chatId, otherUserUid: otherUserUid),
                     ),
-                    const SizedBox(width: 16),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          user['name'],
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                  );
+                },
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.pink[100],
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Row(
+                    children: [
+                      Stack(
+                        children: [
+                          CircleAvatar(
+                            radius: 22,
+                            backgroundImage: (user['photoUrl'] != null && user['photoUrl'] != '')
+                                ? NetworkImage(transformCloudinaryUrl(user['photoUrl']))
+                                : null,
+                            child: (user['photoUrl'] == null || user['photoUrl'] == '')
+                                ? const Icon(Icons.person, size: 28)
+                                : null,
                           ),
-                        ),
-                        Text(
-                          '${user['distance'].toStringAsFixed(2)} km',
-                          style: const TextStyle(fontSize: 14),
-                        ),
-                      ],
-                    ),
-                  ],
+                          if (user['hasNewChat'] == true)
+                            Positioned(
+                              left: 0,
+                              top: 0,
+                              child: Container(
+                                width: 14,
+                                height: 14,
+                                decoration: BoxDecoration(
+                                  color: Colors.orange,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.white, width: 2),
+                                ),
+                              ),
+                            ),
+                          if (user['hasChatted'] == true)
+                            Positioned(
+                              right: 0,
+                              bottom: 0,
+                              child: Container(
+                                width: 14,
+                                height: 14,
+                                decoration: BoxDecoration(
+                                  color: Colors.green,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.white, width: 2),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(width: 16),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            user['name'],
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          Text(
+                            '${user['distance'].toStringAsFixed(2)} km',
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -321,24 +474,32 @@ class _HomeLayoutState extends State<HomeLayout> {
   }
 }
 
-// Fungsi simpan lokasi user
-Future<void> saveUserLocation(String uid, String name) async {
-  LocationPermission permission = await Geolocator.checkPermission();
-  if (permission == LocationPermission.denied ||
-      permission == LocationPermission.deniedForever) {
-    permission = await Geolocator.requestPermission();
-    if (permission == LocationPermission.denied ||
-        permission == LocationPermission.deniedForever) {
-      // Tidak dapat akses lokasi, jangan lanjutkan
-      return;
-    }
+class ProfileAvatar extends StatelessWidget {
+  const ProfileAvatar({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return Container();
+
+    return StreamBuilder<DatabaseEvent>(
+      stream: FirebaseDatabase.instance.ref('users/${user.uid}').onValue,
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || snapshot.data?.snapshot.value == null) {
+          return const CircleAvatar(child: Icon(Icons.person));
+        }
+        final data = snapshot.data!.snapshot.value as Map;
+        final photoUrl = data['photoUrl'] ?? '';
+        return CircleAvatar(
+          radius: 22,
+          backgroundImage: (photoUrl != null && photoUrl != '')
+              ? NetworkImage(transformCloudinaryUrl(photoUrl))
+              : null,
+          child: (photoUrl == null || photoUrl == '')
+              ? const Icon(Icons.person, size: 22)
+              : null,
+        );
+      },
+    );
   }
-  Position pos = await Geolocator.getCurrentPosition();
-  await FirebaseDatabase.instance.ref('users/$uid').set({
-    'name': name,
-    'lat': pos.latitude,
-    'lng': pos.longitude,
-    'last_update': DateTime.now()
-        .toIso8601String(), // Tambahkan timestamp ISO8601
-  });
 }

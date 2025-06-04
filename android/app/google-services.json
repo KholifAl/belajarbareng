@@ -1,6 +1,7 @@
 {
   "project_info": {
     "project_number": "610083134108",
+    "firebase_url": "https://belajarbersama-54559-default-rtdb.asia-southeast1.firebasedatabase.app",
     "project_id": "belajarbersama-54559",
     "storage_bucket": "belajarbersama-54559.firebasestorage.app"
   },
@@ -13,6 +14,14 @@
         }
       },
       "oauth_client": [
+        {
+          "client_id": "610083134108-j6ljmvinfbkd89g4d4k0h3krq7a2r9ej.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.belajarbersama",
+            "certificate_hash": "5eaa4d68e494a272c38db21fb1e77eb2cf1e1198"
+          }
+        },
         {
           "client_id": "610083134108-jqnks3sgqmv4jh4t8vsenpcm9fs9o8d3.apps.googleusercontent.com",
           "client_type": 3

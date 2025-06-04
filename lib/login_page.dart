@@ -22,6 +22,13 @@ class _LoginPageState extends State<LoginPage> {
         email: emailController.text.trim(),
         password: passwordController.text.trim(),
       );
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await FirebaseDatabase.instance.ref('users/${user.uid}').update({
+          'email': user.email,
+          'last_login': DateTime.now().toIso8601String(),
+        });
+      }
     } on FirebaseAuthException catch (e) {
       setState(() {
         errorMessage = e.message;
@@ -45,6 +52,15 @@ class _LoginPageState extends State<LoginPage> {
         idToken: googleAuth.idToken,
       );
       await FirebaseAuth.instance.signInWithCredential(credential);
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await FirebaseDatabase.instance.ref('users/${user.uid}').update({
+          'name': user.displayName ?? user.email,
+          'email': user.email,
+          'photoUrl': user.photoURL,
+          'last_login': DateTime.now().toIso8601String(),
+        });
+      }
       print('Google Sign-In success');
     } on FirebaseAuthException catch (e) {
       setState(() {
@@ -53,7 +69,6 @@ class _LoginPageState extends State<LoginPage> {
       print('Google Sign-In error: ${e.message}');
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
